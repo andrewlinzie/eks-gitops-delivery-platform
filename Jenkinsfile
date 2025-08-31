@@ -2,8 +2,10 @@ pipeline {
     agent any
 
     environment {
-        AWS_DEFAULT_REGION = "us-east-2"
-        ECR_REPO = "899631475351.dkr.ecr.us-east-2.amazonaws.com/hello-world-flask"
+        AWS_ACCOUNT_ID = "899631475351"
+        AWS_REGION     = "us-east-2"
+        ECR_REPO       = "hello-world-flask"
+        IMAGE_TAG      = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -13,48 +15,37 @@ pipeline {
             }
         }
 
-        stage('Docker Version Check') {
-            steps {
-                sh 'docker --version'
-            }
-        }
-
         stage('Docker Build') {
             steps {
-                sh 'docker build -t $ECR_REPO:${BUILD_NUMBER} App'
+                sh 'docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG App'
             }
         }
 
         stage('ECR Login & Push') {
             steps {
-                withAWS(credentials: 'aws-credentials', region: "${AWS_DEFAULT_REGION}") {
-                    sh '''
-                        aws ecr get-login-password --region $AWS_DEFAULT_REGION \
-                          | docker login --username AWS --password-stdin $ECR_REPO
-                        docker push $ECR_REPO:${BUILD_NUMBER}
-                    '''
-                }
+                sh '''
+                  aws ecr get-login-password --region $AWS_REGION \
+                    | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+                  docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
+                '''
             }
         }
 
         stage('Update kubeconfig') {
             steps {
-                withAWS(credentials: 'aws-credentials', region: "${AWS_DEFAULT_REGION}") {
-                    sh '''
-                        aws eks update-kubeconfig --name techchallenge2-eks --region $AWS_DEFAULT_REGION
-                    '''
-                }
+                sh 'aws eks update-kubeconfig --region $AWS_REGION --name eks-cluster'
             }
         }
 
         stage('Helm Deploy/Upgrade') {
             steps {
                 sh '''
-                    helm upgrade --install hello-app ./helm/hello \
-                      --namespace jenkins-deploy \
-                      --create-namespace \
-                      -f helm/hello/values.yaml \
-                      --set image.tag=${BUILD_NUMBER}
+                  helm upgrade --install hello-app ./helm/hello \
+                    --namespace jenkins-deploy \
+                    --create-namespace \
+                    -f helm/hello/values.yaml \
+                    --set image.tag=$IMAGE_TAG
                 '''
             }
         }
