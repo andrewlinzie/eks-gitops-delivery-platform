@@ -18,8 +18,8 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh '/usr/bin/docker --version'
-                sh '/usr/bin/docker build -t $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG App'
+                sh 'docker --version'
+                sh 'docker build -t 899631475351.dkr.ecr.us-east-2.amazonaws.com/hello-world-flask:${BUILD_NUMBER} App'
             }
         }
 
