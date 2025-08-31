@@ -1,63 +1,58 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    AWS_DEFAULT_REGION = 'us-east-2'
-    CLUSTER_NAME       = 'eks-cluster'
-    ECR_URI            = '899631475351.dkr.ecr.us-east-2.amazonaws.com/hello-world-flask'
-    IMAGE_TAG          = "${env.BUILD_NUMBER}"
-    RELEASE_NAME       = 'hello'
-    CHART_DIR          = 'helm/hello'
-  }
-
-  stages {
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
+    environment {
+        AWS_REGION = "us-east-2"
+        ECR_REPO = "899631475351.dkr.ecr.us-east-2.amazonaws.com/hello-world-flask"
     }
 
-    stage('Docker Build') {
-      steps {
-        sh """
-          docker build -t ${ECR_URI}:${IMAGE_TAG} App
-        """
-      }
-    }
-
-    stage('ECR Login & Push') {
-      steps {
-        sh """
-          aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
-            docker login --username AWS --password-stdin ${ECR_URI}
-          docker push ${ECR_URI}:${IMAGE_TAG}
-        """
-      }
-    }
-
-    stage('Update kubeconfig') {
-      steps {
-        sh "aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}"
-      }
-    }
-
-    stage('Helm Deploy/Upgrade') {
-      steps {
-        dir("${CHART_DIR}") {
-          sh """
-            helm upgrade --install ${RELEASE_NAME} . \
-              --set image.repository=${ECR_URI} \
-              --set image.tag=${IMAGE_TAG} \
-              --wait --timeout 5m
-          """
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout([$class: 'GitSCM',
+                    branches: [[name: "*/main"]],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/andrewlinzie/TechChallenge2.git',
+                        credentialsId: 'github-PAT-token'
+                    ]]
+                ])
+            }
         }
-      }
-    }
-  }
 
-  post {
-    success {
-      sh 'kubectl get ingress'
+        stage('Docker Build') {
+            steps {
+                sh '/usr/bin/docker build -t $ECR_REPO:${BUILD_NUMBER} App'
+            }
+        }
+
+        stage('ECR Login & Push') {
+            steps {
+                sh '''
+                aws ecr get-login-password --region $AWS_REGION \
+                  | /usr/bin/docker login --username AWS --password-stdin $ECR_REPO
+                /usr/bin/docker push $ECR_REPO:${BUILD_NUMBER}
+                '''
+            }
+        }
+
+        stage('Update kubeconfig') {
+            steps {
+                sh '''
+                aws eks update-kubeconfig --name eks-cluster --region $AWS_REGION
+                '''
+            }
+        }
+
+        stage('Helm Deploy/Upgrade') {
+            steps {
+                sh '''
+                helm upgrade --install hello-app ./helm/hello \
+                  --namespace jenkins-deploy \
+                  --create-namespace \
+                  -f helm/hello/values.yaml \
+                  --set image.tag=${BUILD_NUMBER}
+                '''
+            }
+        }
     }
-  }
 }
