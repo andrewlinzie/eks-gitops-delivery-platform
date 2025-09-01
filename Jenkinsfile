@@ -8,15 +8,32 @@ pipeline {
         IMAGE_TAG      = "${BUILD_NUMBER}"
     }
 
+    options {
+        skipDefaultCheckout() // disable Jenkins' automatic checkout
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                script {
+                    // Ensure a clean workspace
+                    deleteDir()
+
+                    // Explicit Git checkout
+                    checkout([$class: 'GitSCM',
+                              branches: [[name: '*/main']],
+                              userRemoteConfigs: [[
+                                  url: 'https://github.com/andrewlinzie/TechChallenge2.git',
+                                  credentialsId: 'github-PAT-token'
+                              ]]
+                    ])
+                }
             }
         }
 
         stage('Docker Build') {
             steps {
+                sh 'docker --version'
                 sh 'docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG App'
             }
         }
