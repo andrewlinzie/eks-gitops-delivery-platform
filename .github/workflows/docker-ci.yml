@@ -1,0 +1,32 @@
+name: Build and Push Flask Image to ECR
+
+on:
+  workflow_dispatch:     # manual trigger
+  push:
+    branches:
+      - gitops           # only run on pushes to gitops branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-2   # adjust if your EKS/ECR is in us-east-2
+
+    - name: Log in to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build and Push Docker Image
+      env:
+        ECR_REPO: ${{ secrets.ECR_REPO_URI }}
+      run: |
+        docker build -t $ECR_REPO:$GITHUB_SHA ./App
+        docker push $ECR_REPO:$GITHUB_SHA
