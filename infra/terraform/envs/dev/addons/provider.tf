@@ -10,32 +10,39 @@ terraform {
     }
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 2.11"   # ✅ stick to Helm v2.11
+      version = "~> 2.11"
     }
   }
 }
 
-provider "aws" {
-  region = "us-east-2"
+variable "region" {
+  type    = string
+  default = "us-east-2"
 }
 
-# Pull cluster info from AWS
+variable "cluster_name" {
+  description = "EKS cluster name to target (from platform stack)"
+  type        = string
+}
+
+provider "aws" {
+  region = var.region
+}
+
 data "aws_eks_cluster" "main" {
-  name = aws_eks_cluster.main.name
+  name = var.cluster_name
 }
 
 data "aws_eks_cluster_auth" "main" {
-  name = aws_eks_cluster.main.name
+  name = var.cluster_name
 }
 
-# Kubernetes provider
 provider "kubernetes" {
   host                   = data.aws_eks_cluster.main.endpoint
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.main.certificate_authority[0].data)
   token                  = data.aws_eks_cluster_auth.main.token
 }
 
-# Helm provider (works in v2.11 with nested kubernetes block)
 provider "helm" {
   kubernetes {
     host                   = data.aws_eks_cluster.main.endpoint

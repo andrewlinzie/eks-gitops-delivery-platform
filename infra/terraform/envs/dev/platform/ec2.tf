@@ -22,7 +22,7 @@ resource "aws_instance" "jenkins_master" {
   vpc_security_group_ids = [aws_security_group.jenkins_master.id]
   key_name               = "my-desktop-keypair" # replace with your keypair name
 
-  associate_public_ip_address = true  # enables SSH from outside
+  associate_public_ip_address = true # enables SSH from outside
 
   root_block_device {
     volume_size = 20

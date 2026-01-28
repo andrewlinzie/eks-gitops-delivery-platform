@@ -1,6 +1,6 @@
 # EKS Cluster
 resource "aws_eks_cluster" "main" {
-  name     = "eks-cluster"
+  name     = var.cluster_name
   role_arn = aws_iam_role.eks_cluster.arn
   version  = "1.31"
 
@@ -16,7 +16,7 @@ resource "aws_eks_cluster" "main" {
   ]
 
   tags = {
-    Name = "eks-cluster"
+    Name = var.cluster_name
   }
 }
 
@@ -118,7 +118,7 @@ resource "aws_launch_template" "eks_nodes" {
 
   user_data = base64encode(<<EOF
   #!/bin/bash
-  /etc/eks/bootstrap.sh eks-cluster
+  /etc/eks/bootstrap.sh ${var.cluster_name}
   EOF
   )
 
@@ -160,8 +160,8 @@ resource "aws_eks_node_group" "main" {
   ]
 
   tags = {
-    "k8s.io/cluster-autoscaler/enabled"                         = "true"
-    "k8s.io/cluster-autoscaler/${aws_eks_cluster.main.name}"    = "owned"
+    "k8s.io/cluster-autoscaler/enabled"                      = "true"
+    "k8s.io/cluster-autoscaler/${aws_eks_cluster.main.name}" = "owned"
   }
 
   lifecycle {

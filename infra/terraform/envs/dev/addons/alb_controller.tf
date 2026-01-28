@@ -6,7 +6,7 @@ resource "helm_release" "alb_controller" {
 
   values = [
     yamlencode({
-      clusterName = aws_eks_cluster.main.name
+      clusterName = data.aws_eks_cluster.main.name
       serviceAccount = {
         create = false
         name   = kubernetes_service_account.alb_controller.metadata[0].name

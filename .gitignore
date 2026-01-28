@@ -10,3 +10,11 @@ crash.log
 **/*.tfstate
 **/*.tfstate.backup
 **/.terraform/
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/crash.log
+**/*.tfplan
