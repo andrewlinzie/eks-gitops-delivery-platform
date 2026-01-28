@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: 899631475351.dkr.ecr.us-east-2.amazonaws.com/hello-world-flask
-  tag: "v1"
+  tag: "PLACEHOLDER_TAG"   # <-- ArgoCD automation replaces this
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []  # Not needed if nodes have ECR IAM permissions

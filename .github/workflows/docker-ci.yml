@@ -1,9 +1,13 @@
 name: Build and Push Flask Image to ECR
 
 on:
+  workflow_dispatch:     # allow manual trigger
   push:
     branches:
-      - gitops
+      - gitops           # only run on pushes to gitops branch
+
+permissions:
+  contents: write        # ✅ allow workflow to push commits back to repo
 
 jobs:
   build:
@@ -12,13 +16,15 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0    # ✅ needed so git push works cleanly
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v2
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-2
+        aws-region: us-east-2   # adjust if your cluster is in a different region
 
     - name: Log in to Amazon ECR
       uses: aws-actions/amazon-ecr-login@v1
@@ -30,11 +36,11 @@ jobs:
         docker build -t $ECR_REPO:${GITHUB_SHA} ./App
         docker push $ECR_REPO:${GITHUB_SHA}
 
-    - name: Update Helm values.yaml with new image tag
+    -     - name: Update Helm values.yaml with new image tag
       run: |
-        sed -i "s|tag:.*|tag: \"${GITHUB_SHA}\"|" helm/hello/values.yaml
+        sed -i "s|PLACEHOLDER_TAG|${GITHUB_SHA}|" helm/hello/values.yaml
         git config user.name "github-actions"
-        git config user.email "actions@github.com"
+        git config user.email "github-actions@github.com"
         git add helm/hello/values.yaml
-        git commit -m "Update image tag to ${GITHUB_SHA}"
+        git commit -m "Update image tag to ${GITHUB_SHA}" || echo "No changes to commit"
         git push origin gitops
