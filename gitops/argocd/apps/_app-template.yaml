@@ -1,0 +1,25 @@
+# Copy this file when creating a new ArgoCD Application.
+# It keeps repoURL/targetRevision consistent.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: REPLACE_ME
+  namespace: argocd
+spec:
+  project: techchallenge2
+
+  # Reuse these two lines everywhere
+  source: &repo
+    repoURL: https://github.com/andrewlinzie/TechChallenge2.git
+    targetRevision: gitops
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: REPLACE_ME
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+  syncOptions:
+    - CreateNamespace=true

@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tc2-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tc2-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tc2-api
+    spec:
+      containers:
+        - name: api
+          image: REPLACE_ME_IMAGE
+          ports:
+            - containerPort: 5000

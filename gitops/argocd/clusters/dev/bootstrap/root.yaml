@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tc2-dev-root
+  namespace: argocd
+spec:
+  project: techchallenge2
+  source:
+    repoURL: https://github.com/andrewlinzie/TechChallenge2.git
+    targetRevision: gitops
+    path: gitops/argocd/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

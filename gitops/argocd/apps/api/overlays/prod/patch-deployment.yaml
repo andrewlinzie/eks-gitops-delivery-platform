@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tc2-api
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/andrewlinzie/techchallenge2-api:prod

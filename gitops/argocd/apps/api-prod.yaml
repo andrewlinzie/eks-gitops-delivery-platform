@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tc2-api-prod
+  namespace: argocd
+spec:
+  project: techchallenge2
+  source:
+    repoURL: https://github.com/andrewlinzie/TechChallenge2.git
+    targetRevision: gitops
+    path: gitops/argocd/apps/api/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: api
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+  syncOptions:
+    - CreateNamespace=true
