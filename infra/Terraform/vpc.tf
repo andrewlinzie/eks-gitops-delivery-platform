@@ -16,13 +16,13 @@ resource "aws_vpc" "main" {
 resource "aws_subnet" "public" {
   count             = 2
   vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.${count.index + 100}.0/24"  # ✅ Use 10.0.100.0/24 and 10.0.101.0/24
+  cidr_block        = "10.0.${count.index + 100}.0/24" # ✅ Use 10.0.100.0/24 and 10.0.101.0/24
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "public-subnet-${count.index + 1}"
+    Name                     = "public-subnet-${count.index + 1}"
     "kubernetes.io/role/elb" = "1"
   }
 }
@@ -35,7 +35,7 @@ resource "aws_subnet" "private" {
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
   tags = {
-    Name = "private-subnet-${count.index + 1}"
+    Name                              = "private-subnet-${count.index + 1}"
     "kubernetes.io/role/internal-elb" = "1"
   }
 }

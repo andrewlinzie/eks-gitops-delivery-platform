@@ -21,8 +21,9 @@ resource "aws_instance" "jenkins_master" {
   subnet_id              = aws_subnet.public[0].id
   vpc_security_group_ids = [aws_security_group.jenkins_master.id]
   key_name               = "my-desktop-keypair" # replace with your keypair name
+  iam_instance_profile   = aws_iam_instance_profile.jenkins_master.name
 
-  associate_public_ip_address = true  # enables SSH from outside
+  associate_public_ip_address = true # enables SSH from outside
 
   root_block_device {
     volume_size = 20

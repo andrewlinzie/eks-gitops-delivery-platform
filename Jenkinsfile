@@ -2,24 +2,26 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCOUNT_ID = "899631475351"
-        AWS_REGION     = "us-east-2"
-        ECR_REPO       = "hello-world-flask"
-        IMAGE_TAG      = "${BUILD_NUMBER}"
+        AWS_ACCOUNT_ID   = "899631475351"
+        AWS_REGION       = "us-east-2"
+        ECR_REPO         = "hello-world-flask"
+        IMAGE_TAG        = "${BUILD_NUMBER}"
+        CLUSTER_NAME     = "eks-cluster"
+        CPU_THRESHOLD    = "80"
+        MEMORY_THRESHOLD = "80"
+        SNS_TOPIC_ARN    = ""
     }
 
     options {
-        skipDefaultCheckout() // disable Jenkins' automatic checkout
+        skipDefaultCheckout()
     }
 
     stages {
         stage('Checkout') {
             steps {
                 script {
-                    // Ensure a clean workspace
                     deleteDir()
 
-                    // Explicit Git checkout
                     checkout([$class: 'GitSCM',
                               branches: [[name: '*/main']],
                               userRemoteConfigs: [[
@@ -51,7 +53,14 @@ pipeline {
 
         stage('Update kubeconfig') {
             steps {
-                sh 'aws eks update-kubeconfig --region $AWS_REGION --name eks-cluster'
+                sh 'aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME'
+            }
+        }
+
+        stage('Cluster Health Check') {
+            steps {
+                sh 'chmod +x scripts/health-check.sh'
+                sh './scripts/health-check.sh'
             }
         }
 
@@ -65,6 +74,12 @@ pipeline {
                     --set image.tag=$IMAGE_TAG
                 '''
             }
+        }
+    }
+
+    post {
+        failure {
+            echo 'Pipeline failed. Review the Cluster Health Check stage logs if deployment did not proceed.'
         }
     }
 }

@@ -160,8 +160,8 @@ resource "aws_eks_node_group" "main" {
   ]
 
   tags = {
-    "k8s.io/cluster-autoscaler/enabled"                         = "true"
-    "k8s.io/cluster-autoscaler/${aws_eks_cluster.main.name}"    = "owned"
+    "k8s.io/cluster-autoscaler/enabled"                      = "true"
+    "k8s.io/cluster-autoscaler/${aws_eks_cluster.main.name}" = "owned"
   }
 
   lifecycle {
