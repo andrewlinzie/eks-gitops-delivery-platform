@@ -23,10 +23,10 @@ pipeline {
                     deleteDir()
 
                     checkout([$class: 'GitSCM',
-                              branches: [[name: '*/main']],
+                              branches: [[name: '*/feature/predeploy-health-check'']],
                               userRemoteConfigs: [[
                                   url: 'https://github.com/andrewlinzie/TechChallenge2.git',
-                                  credentialsId: 'github-PAT-token'
+                                  credentialsId: 'github-pat'
                               ]]
                     ])
                 }
