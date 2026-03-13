@@ -7,8 +7,8 @@ pipeline {
         ECR_REPO         = "hello-world-flask"
         IMAGE_TAG        = "${BUILD_NUMBER}"
         CLUSTER_NAME     = "eks-cluster"
-        CPU_THRESHOLD    = "80"
-        MEMORY_THRESHOLD = "80"
+        CPU_THRESHOLD    = "95"
+        MEMORY_THRESHOLD = "95"
         SNS_TOPIC_ARN    = ""
     }
 
