@@ -10,3 +10,8 @@ data:
       groups:
         - system:bootstrappers
         - system:nodes
+
+    - rolearn: arn:aws:iam::899631475351:role/jenkins-master-role
+      username: jenkins-master
+      groups:
+        - system:masters

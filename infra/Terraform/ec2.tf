@@ -17,7 +17,7 @@ data "aws_ami" "ubuntu_2204" {
 # EC2 Instance for Jenkins Master
 resource "aws_instance" "jenkins_master" {
   ami                    = data.aws_ami.ubuntu_2204.id
-  instance_type          = "t3.small"
+  instance_type          = "t3.medium"
   subnet_id              = aws_subnet.public[0].id
   vpc_security_group_ids = [aws_security_group.jenkins_master.id]
   key_name               = "my-desktop-keypair" # replace with your keypair name
