@@ -1,5 +1,12 @@
 name: GitOps CI - Flask to ECR and Helm Update
 
+# =========================================================
+# WORKFLOW TRIGGERS
+# =========================================================
+# This workflow can be run manually from the GitHub UI,
+# or automatically whenever code is pushed to the gitops branch.
+# The path filters help avoid unnecessary runs when unrelated
+# parts of the repo change.
 on:
   workflow_dispatch:
   push:
@@ -10,20 +17,48 @@ on:
       - "helm/**"
       - ".github/workflows/**"
 
+# =========================================================
+# WORKFLOW PERMISSIONS
+# =========================================================
+# contents: write  -> needed because this workflow commits
+#                    and pushes updated Helm values back to GitHub
+# id-token: write  -> needed for OIDC authentication to AWS
 permissions:
   contents: write
   id-token: write
 
+# =========================================================
+# CONCURRENCY CONTROL
+# =========================================================
+# Ensures only one active run per branch at a time.
+# If a newer run starts, the older in-progress run is canceled.
+# This helps prevent multiple runs from racing to update values.yaml.
 concurrency:
   group: gitops-ci-${{ github.ref }}
   cancel-in-progress: true
 
+# =========================================================
+# GLOBAL NON-SENSITIVE ENVIRONMENT VARIABLES
+# =========================================================
 env:
   AWS_REGION: us-east-2
   APP_DIR: App
   HELM_VALUES_FILE: helm/hello/values.yaml
 
 jobs:
+  # =======================================================
+  # JOB 1: VALIDATE
+  # =======================================================
+  # Goal:
+  # - Check out the app code
+  # - Set up Python
+  # - Install dependencies
+  # - Run linting
+  # - Run tests
+  #
+  # Why:
+  # This job acts as the first quality gate. If validation fails,
+  # the workflow stops before building or deploying anything.
   validate:
     name: Validate Flask App
     runs-on: ubuntu-latest
@@ -53,12 +88,27 @@ jobs:
         run: |
           pytest "${APP_DIR}" || echo "No tests found yet - add tests for stronger CI"
 
+  # =======================================================
+  # JOB 2: BUILD AND PUSH IMAGE
+  # =======================================================
+  # Goal:
+  # - Authenticate to AWS with OIDC
+  # - Log in to ECR
+  # - Build the Docker image
+  # - Tag the image with short SHA and latest
+  # - Push the image to ECR
+  #
+  # Why:
+  # This creates a traceable deployable artifact that Kubernetes
+  # will later pull through the GitOps process.
   build_and_push:
     name: Build and Push Image to ECR
     runs-on: ubuntu-latest
     needs: validate
-    environment: gitops
+    environment: Prod
 
+    # These outputs are passed to the next job so the GitOps
+    # manifest update can reference the exact image that was built.
     outputs:
       image_uri: ${{ steps.prep.outputs.image_uri }}
       image_tag: ${{ steps.prep.outputs.image_tag }}
@@ -67,6 +117,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # OIDC-based AWS authentication:
+      # GitHub exchanges an identity token for short-lived AWS credentials
+      # by assuming an IAM role. This is more secure than long-lived access keys.
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -74,9 +127,14 @@ jobs:
           role-session-name: github-actions-ecr
           aws-region: ${{ env.AWS_REGION }}
 
+      # Docker must be logged into ECR before it can push images.
       - name: Log in to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      # Prepare the full image URI and a short immutable image tag.
+      # Example:
+      # image_uri = 123456789012.dkr.ecr.us-east-2.amazonaws.com/my-app
+      # image_tag = a1b2c3d4
       - name: Prepare image metadata
         id: prep
         env:
@@ -86,6 +144,9 @@ jobs:
           echo "image_uri=${ECR_REGISTRY}/${ECR_REPOSITORY}" >> "$GITHUB_OUTPUT"
           echo "image_tag=$(git rev-parse --short=8 "$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
 
+      # Build the Docker image once, applying both:
+      # - an immutable SHA-based tag
+      # - a latest tag for convenience
       - name: Build Docker image
         run: |
           docker build \
@@ -93,11 +154,23 @@ jobs:
             -t "${{ steps.prep.outputs.image_uri }}:latest" \
             "${APP_DIR}"
 
+      # Push both tags to Amazon ECR.
       - name: Push Docker image to ECR
         run: |
           docker push "${{ steps.prep.outputs.image_uri }}:${{ steps.prep.outputs.image_tag }}"
           docker push "${{ steps.prep.outputs.image_uri }}:latest"
 
+  # =======================================================
+  # JOB 3: UPDATE GITOPS MANIFESTS
+  # =======================================================
+  # Goal:
+  # - Update Helm values.yaml with the new image repo and tag
+  # - Commit the change back to the gitops branch
+  #
+  # Why:
+  # This is the GitOps handoff. GitHub Actions does not deploy
+  # directly to EKS. Instead, it updates Git, and Argo CD detects
+  # that Git change and syncs the cluster to match.
   update_gitops_manifests:
     name: Update Helm Values in GitOps Branch
     runs-on: ubuntu-latest
@@ -109,6 +182,8 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Update the actual repository and tag fields in values.yaml
+      # so repeated deployments remain reliable.
       - name: Update Helm image repository and tag
         env:
           IMAGE_URI: ${{ needs.build_and_push.outputs.image_uri }}
@@ -137,6 +212,8 @@ jobs:
           path.write_text(text)
           PY
 
+      # Commit and push the updated Helm values back to the gitops branch.
+      # Argo CD will detect this Git change and reconcile the cluster.
       - name: Commit and push Helm values update
         env:
           IMAGE_TAG: ${{ needs.build_and_push.outputs.image_tag }}
