@@ -1,8 +1,6 @@
 # EKS GitOps Delivery Platform (CI/CD + Kubernetes + Terraform)
 ## Overview
-
 This project demonstrates the design and implementation of a production-style DevOps delivery platform on AWS, combining:
-
 - Infrastructure as Code (Terraform)
 - Containerization (Docker)
 - Kubernetes orchestration (EKS + Helm)
@@ -11,116 +9,146 @@ This project demonstrates the design and implementation of a production-style De
 
 The system models how modern teams build, package, and deploy applications across environments using automated, reproducible workflows.
 
+## Purpose
+The goal of this project is to demonstrate how to:
+- Build a modern GitOps-based deployment system using Kubernetes
+- Automate application delivery using CI/CD pipelines
+- Enable environment-based deployments with strong traceability
+
+This results in a system that is scalable, observable, and aligned with modern DevOps best practices.
+
 ## Architecture
+### High-Level Flow
+1. Developers push code to the repository
+2. GitHub Actions builds and pushes Docker images to ECR
+3. Deployment manifests (Helm values) are updated in Git
+4. Argo CD monitors the Git repository for changes
+5. Argo CD syncs desired state to the EKS cluster
+6. Kubernetes performs rolling updates with zero downtime
 
-The platform consists of four core layers:
+### Core Components
+- EKS (Kubernetes) – Container orchestration platform
+- Helm – Kubernetes package management
+- Argo CD – GitOps deployment controller
+- GitHub Actions – Primary CI pipeline
+- Jenkins (EC2) – Legacy CI/CD pipeline
+- ECR – Container image registry
+- Terraform – Infrastructure provisioning
+- ALB Ingress – External traffic routing
 
-### 1. Application Layer
-- Python Flask service (containerized)
-- Served via Gunicorn for production readiness
-- Exposed via Kubernetes ingress (ALB)
-
-### 2. Infrastructure Layer (Terraform)
-- VPC with public/private subnets, NAT, IGW
-- EKS cluster with managed node group
-- ECR for container image storage
-- EC2 instance hosting Jenkins
-- IAM roles and security groups following least-privilege principles
-
-### 3. CI/CD Layer
-Two pipeline strategies are implemented:
-
-#### GitHub Actions (Primary – GitOps)
-- Code push triggers workflow
-- Validates, builds, and tags Docker images
-- Uses OIDC for secure AWS authentication (no static credentials)
-- Pushes images to ECR
-- Updates deployment manifests
-
-#### Jenkins (Legacy / Transitional)
-- Runs on EC2 (containerized Jenkins master)
-- Handles build + deploy workflow
-- Demonstrates traditional CI/CD pipeline architecture
-
-### 4. Deployment Layer (GitOps)
-- Argo CD monitors Git state
-- Detects changes in Helm values
-- Automatically reconciles cluster state
-- Kubernetes performs rolling updates with zero downtime
-
-## Deployment Flow
-
-End-to-end pipeline:
-
-1. Developer pushes code
+## Workflow
+### GitOps + CI/CD Workflow
+1. Code is pushed to repository
 2. GitHub Actions pipeline runs:
     - validation (lint + tests)
     - Docker build + tag (commit SHA)
     - push to ECR
-3. Helm values updated in Git repo
-4. Argo CD detects change
-5. Kubernetes pulls new image
-6. Rolling deployment executed
+3. Helm values are updated in Git
+4. Argo CD detects changes in Git repository
+5. Argo CD reconciles desired state with cluster
+6. Kubernetes deploys updated containers via rolling updates
 
-This ensures:
-- reproducibility
-- traceability
-- rollback capability
+## Tech Stack
+- Terraform – Infrastructure as Code
+- Docker – Containerization
+- Kubernetes (EKS) – Container orchestration
+- Helm – Kubernetes package management
+- GitHub Actions – CI/CD automation
+- Jenkins – Legacy CI/CD pipeline
+- Argo CD – GitOps deployment
+- Amazon ECR – Image storage
 
 ## Key Engineering Decisions
-### GitOps over imperative deployment
-- Eliminates manual kubectl usage
-- Provides auditability via Git history
-- Enables automated reconciliation
+### GitOps vs Imperative Deployment
+GitOps was chosen to eliminate manual deployment processes.
+- Removes reliance on manual kubectl commands
+- Provides auditability through Git history
+- Enables automated reconciliation via Argo CD
 
-### Immutable image tagging
-- Uses commit SHA for traceability
-- Prevents drift across environments
+Imperative deployment approaches were avoided due to lack of traceability and consistency.
 
-### Separation of concerns
-- Infrastructure, application, and deployment logic are modularized
+### Immutable Image Tagging
+Docker images are tagged using commit SHA identifiers.
+- Ensures traceability across deployments
+- Prevents version drift across environments
+- Enables reliable rollback to known versions
 
-### OIDC-based authentication
-- Removes need for long-lived AWS credentials
-- Improves security posture of CI/CD pipelines
+### Separation of Concerns
+The system is modularized into distinct layers:
+- Application layer
+- Infrastructure layer
+- CI/CD layer
+- Deployment (GitOps) layer
+
+This improves maintainability, scalability, and clarity of responsibilities.
+
+### OIDC-Based Authentication
+OIDC was implemented for secure AWS authentication.
+- Eliminates long-lived AWS credentials
+- Enables short-lived, secure authentication tokens
+- Improves CI/CD security posture
 
 ## Infrastructure Highlights
-- EKS cluster (v1.30)
+- EKS cluster (v1.30) with managed node groups
 - Node autoscaling (1–4 nodes)
 - Horizontal Pod Autoscaler (CPU + memory based)
 - ALB ingress for external traffic routing
 - Private networking for internal workloads
 
-## Verification
-- Application deployed via ALB ingress
-- Argo CD shows Healthy and Synced
-- Kubernetes resources validated via:
+## Notable Features
+- GitOps-based deployment with Argo CD
+- Automated CI/CD pipeline using GitHub Actions
+- Immutable deployments using commit-based tagging
+- Zero-downtime deployments via Kubernetes rolling updates
+- Dual pipeline model (modern GitOps + legacy Jenkins)
 
-`kubectl get pods`
-`kubectl get ingress`
+## Deployment / Execution Flow (End-to-End)
+1. Local Development
+    - Build and test application locally
+    - Validate container behavior
+2. Containerization
+    - Dockerize application
+    - Validate container execution
+3. Infrastructure Provisioning
+    - Use Terraform to provision:
+        - VPC and networking
+        - EKS cluster
+        - ECR repositories
+        - IAM roles and security groups
+4. CI/CD Execution
+    - GitHub Actions builds and pushes images
+    - Jenkins pipeline (optional) demonstrates legacy approach
+5. GitOps Deployment
+    - Helm values updated in Git repository
+    - Argo CD detects changes
+    - Argo CD syncs cluster state
+6. Production Deployment
+    - Kubernetes deploys updated containers
+    - ALB routes traffic to services
+7. Validation
+    - Argo CD shows Healthy and Synced
+    - Validate with:
+        - `kubectl get pods`
+        - `kubectl get ingress`
 
-## Local Development
-`cd App`
-`docker build -t hello-app .`
-`docker run -p 5000:5000 hello-app`
+## Outcomes
+- Eliminated manual deployment processes
+- Enabled fully automated, Git-driven deployments
+- Improved deployment traceability and rollback capability
+- Established production-grade Kubernetes delivery workflow
 
-## Terraform Deployment
-`cd infra/Terraform`
-`terraform init`
-`terraform apply`
-
-## Lessons & Improvements
-- Transitioned from Jenkins-based pipelines to GitOps model for better scalability and maintainability
-- Identified limitations of imperative deployment approaches
-- Improved deployment reliability through declarative infrastructure and reconciliation loops
-
-## Future Enhancements
+## Future Improvements
 - Multi-service architecture (API + worker services)
 - Environment promotion strategy (dev → staging → prod)
 - Observability stack (Prometheus + Grafana)
 - Multi-repo GitOps structure
 
-## Author
+## Summary
+This project demonstrates a modern, production-grade DevOps delivery platform that integrates:
+- Infrastructure as Code (Terraform)
+- Containerization (Docker)
+- Orchestration (Kubernetes / EKS)
+- Automation (GitHub Actions, Jenkins)
+- GitOps deployment (Argo CD)
 
-Andrew Linzie
-DevOps Engineer | AWS | Kubernetes | CI/CD
+It reflects real-world DevOps practices: automation, scalability, security, and traceability.
