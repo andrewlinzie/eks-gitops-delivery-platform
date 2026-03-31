@@ -1,3 +1,13 @@
+# Branch Purpose
+
+This branch introduces a pre-deployment Kubernetes health check script.
+
+Includes:
+- Bash script for cluster validation
+- checks for pod health, node readiness, and service availability
+
+Intended as an extension to the main GitOps pipeline.
+
 # Pre-Deployment Cluster Health Gate
 
 To prevent deployments during unstable cluster conditions, a pre-deployment health check stage was added to the CI/CD pipeline.
