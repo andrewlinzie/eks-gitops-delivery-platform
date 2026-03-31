@@ -1,5 +1,5 @@
 # EKS GitOps Delivery Platform (CI/CD + Kubernetes + Terraform)
-##Overview
+## Overview
 
 This project demonstrates the design and implementation of a production-style DevOps delivery platform on AWS, combining:
 
